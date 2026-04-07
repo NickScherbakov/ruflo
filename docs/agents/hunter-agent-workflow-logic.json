@@ -1,0 +1,525 @@
+{
+  "version": "1.0.0",
+  "description": "Expert Chain-of-Thought (XCoT) Workflow for Hunter Agent - Multi-layered reasoning process before action execution",
+  "target_mrr": 2750,
+  "conversion_target_percentage": 50,
+  "workflow_stages": {
+    "layer_1_scout": {
+      "name": "The Scout: Qualitative Assessment",
+      "objective": "Qualify target as high-potential lead before investing diagnostic resources",
+      "execution_order": 1,
+      "time_budget_minutes": 15,
+      "inputs": [
+        "target_github_url",
+        "target_company_domain",
+        "crunchbase_data",
+        "linkedin_company_page",
+        "public_job_postings"
+      ],
+      "decision_tree": {
+        "step_1_icp_match": {
+          "criteria": {
+            "company_stage": ["series_a", "series_b", "series_c", "profitable_bootstrap"],
+            "team_size": {"min": 10, "max": 500},
+            "tech_stack_indicators": ["python", "typescript", "nodejs", "langchain", "openai", "anthropic"],
+            "public_repo_activity": {"commits_last_30_days": {"min": 20}},
+            "observable_ai_usage": true
+          },
+          "scoring_weights": {
+            "company_stage": 0.20,
+            "team_size": 0.15,
+            "tech_stack_match": 0.30,
+            "repo_activity": 0.20,
+            "ai_stack_present": 0.15
+          },
+          "pass_threshold": 0.70,
+          "actions": {
+            "pass": "proceed_to_step_2",
+            "fail": "abort_with_reason_logged"
+          }
+        },
+        "step_2_pain_signal_detection": {
+          "indicators": [
+            {
+              "signal": "high_latency_public_api",
+              "detection_method": "curl_sample_endpoints",
+              "threshold": {"p95_ms": {"min": 500}},
+              "value_score": 0.85
+            },
+            {
+              "signal": "expensive_llm_calls",
+              "detection_method": "repo_search_for_loop_in_llm_calls",
+              "pattern": "for.*in.*client.chat.completions.create",
+              "value_score": 0.90
+            },
+            {
+              "signal": "rate_limit_errors",
+              "detection_method": "search_issues_and_code",
+              "keywords": ["rate limit", "429", "too many requests", "retry"],
+              "value_score": 0.75
+            },
+            {
+              "signal": "hiring_for_ai_infra",
+              "detection_method": "job_posting_analysis",
+              "keywords": ["AI infrastructure", "ML platform", "LLM optimization"],
+              "value_score": 0.60
+            }
+          ],
+          "min_signals_required": 1,
+          "min_total_value_score": 0.70,
+          "actions": {
+            "qualified": "proceed_to_layer_2",
+            "low_confidence": "mark_for_future_review",
+            "unqualified": "abort_gracefully"
+          }
+        },
+        "step_3_cultural_fit_assessment": {
+          "criteria": {
+            "contributing_md_present": true,
+            "code_review_culture": {"public_pr_comments": {"min": 10}},
+            "testing_culture": {"test_coverage_indicator": "tests directory exists"},
+            "engineering_blog": "bonus_points"
+          },
+          "red_flags": [
+            "no_commits_last_90_days",
+            "single_contributor_dominance_>90%",
+            "issues_disabled",
+            "no_response_to_external_prs_in_last_year"
+          ],
+          "actions": {
+            "good_fit": "proceed_to_layer_2",
+            "marginal_fit": "proceed_with_caution_flag",
+            "poor_fit": "abort_target"
+          }
+        }
+      },
+      "outputs": {
+        "decision": "enum[proceed_to_layer_2, abort, defer]",
+        "confidence_score": "float[0.0-1.0]",
+        "pain_signals_detected": "array[string]",
+        "estimated_value_potential": "enum[high, medium, low]",
+        "cultural_fit_score": "float[0.0-1.0]"
+      }
+    },
+    "layer_2_surgeon": {
+      "name": "The Surgeon: Deep AST-Level Diagnosis",
+      "objective": "Identify exact bottleneck with surgical precision using Ruflo's Codex",
+      "execution_order": 2,
+      "time_budget_minutes": 45,
+      "prerequisites": ["layer_1_scout.decision == 'proceed_to_layer_2'"],
+      "inputs": [
+        "target_repo_clone",
+        "ruflo_codex_engine",
+        "performance_traces_if_available",
+        "target_tech_stack_profile"
+      ],
+      "diagnostic_protocol": {
+        "phase_1_static_analysis": {
+          "tools": ["ast_parser", "dependency_graph_builder", "complexity_analyzer"],
+          "targets": [
+            {
+              "issue_type": "synchronous_blocking_in_async_context",
+              "detection_pattern": "async def.*\\n.*(?!await).*client\\.(chat|embeddings|completions)",
+              "severity": "high",
+              "ruflo_solution": "@claude-flow/memory with streaming"
+            },
+            {
+              "issue_type": "n_plus_1_llm_calls",
+              "detection_pattern": "for.*in.*:\\n.*client\\.(chat|embeddings)",
+              "severity": "critical",
+              "ruflo_solution": "@claude-flow/guidance batch orchestration"
+            },
+            {
+              "issue_type": "missing_caching_layer",
+              "detection_pattern": "client\\.(chat|embeddings)(?!.*cache)",
+              "severity": "medium",
+              "ruflo_solution": "@claude-flow/memory semantic cache"
+            },
+            {
+              "issue_type": "python_gil_contention",
+              "detection_method": "detect_cpu_bound_ops_in_request_path",
+              "severity": "high",
+              "ruflo_solution": "@claude-flow/worker multiprocess pool"
+            },
+            {
+              "issue_type": "unoptimized_vector_search",
+              "detection_pattern": "chromadb|pinecone|weaviate(?!.*hnsw)",
+              "severity": "medium",
+              "ruflo_solution": "@claude-flow/memory HNSW indexing (150x faster)"
+            }
+          ],
+          "confidence_threshold": 0.95,
+          "actions": {
+            "high_confidence_diagnosis": "proceed_to_phase_2",
+            "medium_confidence": "request_performance_traces",
+            "low_confidence": "abort_or_ask_target_for_data"
+          }
+        },
+        "phase_2_quantified_impact": {
+          "objective": "Measure the EXACT cost of the problem",
+          "measurements": [
+            {
+              "metric": "latency_p95_ms",
+              "measurement_method": "synthetic_load_test_or_public_api_sampling",
+              "target_improvement": {"min": "30%", "ideal": "70%"}
+            },
+            {
+              "metric": "token_cost_per_request",
+              "calculation": "tokens_per_request * target_api_pricing * requests_per_month",
+              "target_improvement": {"min": "$500/mo", "ideal": "$2000/mo"}
+            },
+            {
+              "metric": "error_rate_percentage",
+              "measurement_method": "search_logs_for_llm_errors",
+              "target_improvement": {"min": "50%", "ideal": "90%"}
+            }
+          ],
+          "output_format": {
+            "problem_statement": "Your /v1/chat endpoint takes 3.2s (p95) because of synchronous embedding calls in chains/conversational.py:47",
+            "current_cost": "$4,200/mo in redundant OpenAI calls + 8s user-facing latency causing 15% drop-off",
+            "solution_preview": "Streaming + async orchestration via Ruflo reduces to 1.1s (p95) and $1,800/mo",
+            "evidence": ["flame_graph.png", "benchmark_results.json", "cost_breakdown.csv"]
+          }
+        },
+        "phase_3_solution_design": {
+          "objective": "Design minimal-invasive fix that showcases Ruflo naturally",
+          "constraints": [
+            "max_files_changed": 3,
+            "max_new_dependencies": 2,
+            "must_be_backward_compatible": true,
+            "must_include_tests": true,
+            "must_include_benchmarks": true
+          ],
+          "solution_template": {
+            "architecture": {
+              "before": "sync embedding call → blocks thread → high latency",
+              "after": "async streaming via @claude-flow/memory → parallel execution → 70% faster"
+            },
+            "implementation_strategy": "sidecar_pattern_or_drop_in_replacement",
+            "ruflo_components_used": [
+              "@claude-flow/memory (semantic caching + HNSW)",
+              "@claude-flow/guidance (batch orchestration)",
+              "@claude-flow/hooks (observability)"
+            ],
+            "fallback_behavior": "if Ruflo unavailable, gracefully degrade to original implementation"
+          },
+          "validation": {
+            "build_and_test_locally": true,
+            "benchmark_improvement": {"min_improvement_percentage": 30},
+            "security_scan": "no_new_vulnerabilities",
+            "license_compatibility": "must_be_mit_or_apache2"
+          }
+        }
+      },
+      "outputs": {
+        "diagnosis_confidence": "float[0.0-1.0]",
+        "bottleneck_location": "string (file:line)",
+        "root_cause": "string (technical explanation)",
+        "quantified_impact": {
+          "latency_improvement_ms": "integer",
+          "cost_savings_usd_per_month": "integer",
+          "error_rate_reduction_percentage": "float"
+        },
+        "solution_ready": "boolean",
+        "solution_spec": "object (see solution_template)"
+      }
+    },
+    "layer_3_diplomat": {
+      "name": "The Diplomat: Drafting the Trojan PR",
+      "objective": "Create a Pull Request that converts at >50% by solving a real problem while naturally demonstrating Ruflo's value",
+      "execution_order": 3,
+      "time_budget_minutes": 60,
+      "prerequisites": [
+        "layer_2_surgeon.diagnosis_confidence >= 0.95",
+        "layer_2_surgeon.solution_ready == true"
+      ],
+      "inputs": [
+        "target_repo_fork",
+        "solution_spec_from_layer_2",
+        "target_cultural_profile_from_layer_1",
+        "trojan_pr_template"
+      ],
+      "pr_construction_protocol": {
+        "section_1_technical_compliment": {
+          "objective": "Establish credibility by showing deep understanding of their codebase",
+          "requirements": [
+            "must_be_specific_not_generic",
+            "must_reference_actual_file_and_line_numbers",
+            "must_acknowledge_their_design_decisions",
+            "must_find_something_genuinely_praiseworthy"
+          ],
+          "examples": {
+            "good": "Your AsyncCircuitBreaker in core/resilience.py:89 with exponential backoff + jitter is excellent. It prevented cascade failures during the Dec 2025 incident (I read the postmortem).",
+            "bad": "Great code! Very impressive!"
+          },
+          "personalization_engine": "use_git_blame_to_credit_specific_author_if_appropriate"
+        },
+        "section_2_problem_identification": {
+          "objective": "Present diagnosis as collaborative observation, not accusation",
+          "tone": "peer_to_peer_not_consultant_to_client",
+          "structure": {
+            "observation": "I was profiling your /v1/embeddings endpoint (hope you don't mind — I was curious about your architecture)",
+            "data": "P95 latency is 847ms, with 680ms (80%) spent in synchronous tokenization (line chains/conv.py:47)",
+            "context": "This is a common pattern with LangChain 0.1.x — not a mistake, just a known bottleneck",
+            "impact": "Extrapolating from your traffic (public metrics), this likely costs ~$3.2k/mo in redundant API calls + user drop-off at 8s+"
+          },
+          "evidence_attachments": [
+            "flame_graph.svg (with their code highlighted)",
+            "benchmark_results.md (reproducible steps)",
+            "cost_calculation.csv (transparent math)"
+          ]
+        },
+        "section_3_solution_preview": {
+          "objective": "Show working code, not promises",
+          "requirements": [
+            "pr_must_be_fully_functional",
+            "must_include_before_after_benchmarks",
+            "must_include_tests_that_pass",
+            "must_include_migration_guide"
+          ],
+          "code_presentation": {
+            "style": "match_their_code_style_exactly",
+            "comments": "use_their_comment_style_and_terminology",
+            "structure": "minimize_diff_size_for_easy_review"
+          },
+          "results_emphasis": {
+            "latency_improvement": "P95: 847ms → 180ms (-78%)",
+            "cost_improvement": "$3.2k/mo → $1.3k/mo (-59%)",
+            "error_rate": "Rate limit errors: 12% → 0.8% (-93%)"
+          }
+        },
+        "section_4_soft_pitch_educational": {
+          "objective": "Mention Ruflo as enabler, not product pitch",
+          "tone": "educational_not_salesy",
+          "approach": "transparent_about_dependencies",
+          "template": {
+            "ruflo_mention": "This optimization uses @claude-flow/memory for async orchestration + semantic caching. It's OSS (MIT license) and handles the cluster coordination that makes streaming safe.",
+            "alternative_path": "Alternative approach: You could build this with Redis + Celery + custom deduplication logic. Estimated: 2-3 weeks engineering time.",
+            "value_prop_implicit": "We maintain Ruflo full-time, so you get updates, security patches, and new optimizations automatically.",
+            "no_pressure": "Feel free to rip out Ruflo and keep the pattern — the important part is fixing the bottleneck."
+          },
+          "ruflo_links": {
+            "docs": "https://github.com/ruvnet/claude-flow/blob/main/README.md",
+            "security": "https://github.com/ruvnet/claude-flow/blob/main/SECURITY.md",
+            "benchmarks": "link to published benchmarks showing 150x HNSW speedup"
+          }
+        },
+        "section_5_call_to_action_subtle": {
+          "objective": "Invite dialogue without pressure",
+          "approach": "offer_technical_call_not_sales_call",
+          "cta_options": [
+            {
+              "level": "minimal",
+              "text": "Happy to answer questions about the implementation. I'm @ruflo_hunter on your company Slack if you use that."
+            },
+            {
+              "level": "moderate",
+              "text": "If you'd like to discuss scaling this pattern across your other endpoints, I'm available for a technical deep-dive. No sales pitch, just engineering."
+            },
+            {
+              "level": "assertive_but_respectful",
+              "text": "We offer a managed version of this stack (Ruflo Cloud) for teams that want the optimization without the operational overhead. $500/mo base tier. But honestly, you can self-host just fine."
+            }
+          ],
+          "selection_logic": "choose_based_on_target_cultural_fit_score"
+        }
+      },
+      "pr_metadata": {
+        "title_format": "perf: Reduce /v1/embeddings p95 latency by 78% via async streaming",
+        "labels_to_suggest": ["performance", "optimization", "external-contribution"],
+        "draft_status": false,
+        "reviewers_to_request": "identify_from_git_blame_and_CODEOWNERS"
+      },
+      "outputs": {
+        "pr_url": "string",
+        "pr_opened_timestamp": "iso8601",
+        "initial_engagement_expected_within_hours": 48,
+        "conversion_probability_estimate": "float[0.0-1.0]"
+      }
+    },
+    "layer_4_closing_loop": {
+      "name": "Autonomous Conversion & Objection Handling",
+      "objective": "Navigate objections and convert technical interest into managed service relationship",
+      "execution_order": 4,
+      "triggered_by": "target_engagement_detected (PR comment, email reply, Slack message)",
+      "state_machine": {
+        "initial_state": "awaiting_first_response",
+        "states": {
+          "awaiting_first_response": {
+            "timeout_hours": 72,
+            "actions_on_timeout": ["gentle_ping_on_pr", "move_to_nurture_sequence"],
+            "transitions": {
+              "on_positive_technical_comment": "state_engaged_technical",
+              "on_objection_raised": "state_objection_handling",
+              "on_ignore": "state_nurture_sequence"
+            }
+          },
+          "state_engaged_technical": {
+            "objective": "Deepen technical relationship",
+            "agent_behavior": [
+              "answer_technical_questions_thoroughly",
+              "offer_additional_optimizations_if_relevant",
+              "share_similar_case_studies_with_permission"
+            ],
+            "conversion_signals_to_detect": [
+              "asks_about_pricing",
+              "asks_about_enterprise_features",
+              "requests_meeting",
+              "asks_how_to_scale_solution"
+            ],
+            "transitions": {
+              "on_conversion_signal": "state_soft_pitch_managed_service",
+              "on_continued_technical_questions": "stay_in_state_build_trust",
+              "on_disengagement": "state_nurture_sequence"
+            }
+          },
+          "state_objection_handling": {
+            "objective": "Address concerns with data and transparency",
+            "objection_playbook": {
+              "too_expensive": {
+                "counter_strategy": "cost_of_inaction_calculation",
+                "data_required": [
+                  "current_monthly_llm_api_spend",
+                  "current_infrastructure_cost",
+                  "engineering_time_cost_for_diy_solution"
+                ],
+                "response_template": "I calculated your current setup costs ~$X/mo (API) + $Y/mo (infra) + Z hours/mo (maintenance). Ruflo Cloud at $500/mo replaces $Y + Z, nets you $savings/mo. Here's the spreadsheet [link].",
+                "fallback": "offer_oss_self_hosted_option_free"
+              },
+              "security_concern": {
+                "counter_strategy": "transparency_and_certification",
+                "materials_to_provide": [
+                  "SOC2_Type_II_report_link",
+                  "security_whitepaper_url",
+                  "offer_call_with_security_engineer",
+                  "explain_data_flow_diagram"
+                ],
+                "response_template": "Totally understand — we're SOC2 Type II certified [link]. Here's our security architecture [diagram]. Your data never leaves your VPC if you use the self-hosted option. Happy to connect you with our security eng for a deep-dive.",
+                "compliance_addons": {
+                  "if_healthcare": "mention_hipaa_compliance",
+                  "if_finance": "mention_sox_pci_compliance",
+                  "if_eu": "mention_gdpr_compliance"
+                }
+              },
+              "not_now_busy": {
+                "counter_strategy": "reduce_friction_to_zero",
+                "response_template": "Totally get it. The PR is already done and tested — you can merge it today with zero additional work. The Ruflo part is optional. I'll check back in Q3 if you want to revisit managed services.",
+                "action": "set_reminder_3_months"
+              },
+              "we_built_it_ourselves": {
+                "counter_strategy": "acknowledge_and_offer_benchmark",
+                "response_template": "That's great! I'd love to compare benchmarks if you're open to it. We've optimized for some edge cases (e.g., thundering herd on cache misses) that took us 6 months to get right. Happy to share our learnings.",
+                "objective": "stay_engaged_as_peer"
+              },
+              "competitor_mention": {
+                "counter_strategy": "honest_comparison_no_bashing",
+                "response_template": "LangSmith / Helicone / X are solid tools. Here's where Ruflo differs: [specific technical differentiation]. Honestly, if X works for you, stick with it. We focus on [specific niche].",
+                "never_do": "trash_competitors"
+              }
+            },
+            "transitions": {
+              "on_objection_resolved": "state_soft_pitch_managed_service",
+              "on_persistent_objection": "state_nurture_sequence",
+              "on_blocker_identified": "state_abort_gracefully"
+            }
+          },
+          "state_soft_pitch_managed_service": {
+            "objective": "Convert to $500/mo managed service tier",
+            "pitch_structure": {
+              "frame": "operational_leverage_not_new_features",
+              "key_points": [
+                "You've already seen the value in the PR",
+                "Managed service = we handle upgrades, monitoring, incident response",
+                "ROI: Your engineers stay focused on product, not AI infra maintenance",
+                "Pricing: $500/mo base (up to 1M tokens/day), scales with usage"
+              ],
+              "trust_signals": [
+                "No lock-in: Export your data anytime",
+                "Cancel anytime: No annual contracts required",
+                "Free migration: We'll move you off if you want to self-host later"
+              ],
+              "cta": "offer_free_trial_30_days"
+            },
+            "transitions": {
+              "on_yes": "state_conversion_complete",
+              "on_maybe": "state_trial_nurture",
+              "on_no": "state_nurture_sequence"
+            }
+          },
+          "state_conversion_complete": {
+            "objective": "Onboard smoothly and ensure success",
+            "agent_behavior": [
+              "send_onboarding_docs",
+              "schedule_kickoff_call",
+              "hand_off_to_customer_success_team",
+              "log_conversion_to_crm"
+            ],
+            "success_criteria": [
+              "payment_method_added",
+              "production_traffic_flowing",
+              "first_invoice_paid"
+            ],
+            "final_action": "store_learnings_to_reasoningbank"
+          },
+          "state_nurture_sequence": {
+            "objective": "Maintain relationship without being pushy",
+            "cadence": [
+              {"days": 30, "action": "share_relevant_blog_post"},
+              {"days": 60, "action": "check_in_with_new_feature_announcement"},
+              {"days": 90, "action": "offer_free_performance_audit"}
+            ],
+            "exit_conditions": [
+              "explicit_opt_out_requested",
+              "company_shut_down_or_pivoted",
+              "after_6_months_no_engagement"
+            ]
+          },
+          "state_abort_gracefully": {
+            "objective": "End outreach respectfully and learn from failure",
+            "final_message_template": "Totally understand this isn't a fit right now. Thanks for the technical conversation — I learned a lot about your architecture. If anything changes, we're here. Best of luck with [specific thing they're working on]!",
+            "logging": [
+              "reason_for_abort",
+              "lessons_learned",
+              "was_diagnosis_accurate"
+            ],
+            "action": "mark_target_as_not_a_fit_for_12_months"
+          }
+        }
+      },
+      "outputs": {
+        "final_state": "enum[conversion_complete, nurture_sequence, aborted]",
+        "conversion_value_usd": "integer",
+        "time_to_conversion_days": "integer",
+        "objections_encountered": "array[string]",
+        "learnings": "string (free text)"
+      }
+    }
+  },
+  "success_metrics": {
+    "target_pr_acceptance_rate": 0.60,
+    "target_conversion_rate": 0.50,
+    "target_time_to_conversion_days": 14,
+    "target_monthly_conversions": 6,
+    "target_mrr_per_conversion": 500,
+    "calculated_mrr_at_target": 2750
+  },
+  "learning_feedback_loop": {
+    "after_each_interaction": [
+      "log_all_decisions_and_outcomes",
+      "update_reasoningbank_patterns",
+      "adjust_objection_playbook_weights"
+    ],
+    "monthly_review": [
+      "analyze_conversion_funnel_bottlenecks",
+      "identify_highest_converting_industries",
+      "refine_icp_criteria",
+      "update_technical_compliment_templates"
+    ],
+    "quarterly_audit": [
+      "measure_trust_coefficient",
+      "validate_diagnosis_accuracy_rate",
+      "assess_ethical_compliance",
+      "recalibrate_personality_traits"
+    ]
+  }
+}
